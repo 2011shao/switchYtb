@@ -8,9 +8,11 @@
       <a-select
         allow-clear
         :trigger-props="{ preventFocus: false }"
-        v-model="export_table_id"
+        @change="changeValue"
+        v-model="props.modelValue"
         :placeholder="'选择' + props.title"
-        :options="bit_all_table"
+        :options="getCanOption"
+        @clear="changeValue('')"
         :field-names="{ value: 'id', label: 'name' }"
         show-header-on-empty
         :show-extra-options="false"
@@ -52,19 +54,57 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  modelValue: {
+    type: String,
+    default: "",
+  },
+  allFieldDic: {
+    //选中的字段
+    type: Object,
+    default: () => {},
+  },
+  preSetArr: {
+    //预设匹配值 姓名
+    type: Array,
+    default: () => [],
+  },
 });
+
 const newFieldName = ref("");
 const addInputLoading = ref(false);
 async function sureAdd() {
   addInputLoading.value = true;
   newFieldName.value = newFieldName.value.trim();
   if (newFieldName.value) {
-    await addBitNewTable(newFieldName.value);
+    const newTableId = await addBitNewTable(newFieldName.value);
+    changeValue(newTableId);
   } else {
     Message.info("表名不能为空");
   }
   addInputLoading.value = false;
 }
+
+const emit = defineEmits(["update:modelValue"]);
+function changeValue(e) {
+  emit("update:modelValue", e);
+}
+
+const getCanOption = computed(() => {
+  const tableList = cloneDeep(bit_all_table.value);
+  const allFieldArr = Object.values(props.allFieldDic);
+  debugger;
+  for (let item of tableList) {
+    item["disabled"] = false;
+    if (allFieldArr.includes(item.id)) {
+      item["disabled"] = true;
+      continue;
+    }
+    if (props.preSetArr.includes(item.name) && !props.modelValue) {
+      emit("update:modelValue", item.id);
+    }
+  }
+  return tableList;
+});
 </script>
 <style>
 .labelCss {

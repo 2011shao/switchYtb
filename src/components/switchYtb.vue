@@ -9,8 +9,7 @@
     </a-typography-text> -->
     <a-spin :loading="bit_loading" style="width: 100%" class="m-t-10">
       <div class="grid-one p-all-1 grid-gap-5">
-        <a-divider>选择视频链接</a-divider>
-
+        <a-divider>视频地址</a-divider>
         <SelectField
           title="链接地址"
           v-model="bit_import_dic.origin_filed"
@@ -18,18 +17,39 @@
           :preSetArr="['链接地址', '地址']"
           :allFieldDic="bit_import_dic"
         ></SelectField>
-        <a-divider>选择存放的字段</a-divider>
-        <SelectTableView title="选择表" canAdd></SelectTableView>
-        <a-checkbox-group direction="vertical" v-model="select_import_arr">
-          <a-checkbox value="video_slt">视频缩略图</a-checkbox>
-          <a-checkbox value="video_title">视频标题</a-checkbox>
-          <a-checkbox value="video_play_num">播放量</a-checkbox>
-          <a-checkbox value="video_zan_num">点赞数</a-checkbox>
-          <a-checkbox value="video_pl_num">评论数</a-checkbox>
-          <a-checkbox value="video_like_num">收藏数</a-checkbox>
-          <a-checkbox value="video_description">视频介绍</a-checkbox>
-          <a-checkbox value="video_channelTitle">频道名称</a-checkbox>
+        <a-divider>存放位置</a-divider>
+        <SelectTableView
+          title="选择表"
+          canAdd
+          v-model="export_table_id"
+          :allFieldDic="{ comment_table_id, import_table_id }"
+        ></SelectTableView>
+        <a-checkbox-group v-model="select_import_arr">
+          <a-space :size="20" wrap>
+            <a-checkbox
+              v-for="(value, key) in ytb_dic"
+              :key="key"
+              :value="key"
+              >{{ value }}</a-checkbox
+            >
+          </a-space>
         </a-checkbox-group>
+        <div class="row-start-center">
+          <a-typography-text class="flex-shrink labelCss">
+            获取评论
+          </a-typography-text>
+          <a-radio-group v-model="is_comment">
+            <a-radio value="true">需要</a-radio>
+            <a-radio value="false">不需要</a-radio>
+          </a-radio-group>
+        </div>
+        <SelectTableView
+          v-if="is_comment"
+          title="评论表"
+          canAdd
+          v-model="comment_table_id"
+          :allFieldDic="{ export_table_id, import_table_id }"
+        ></SelectTableView>
 
         <a-button
           :loading="buttonLoading"
@@ -45,6 +65,8 @@
 </template>
 
 <script setup >
+import { bitable, FieldType, ITable } from "@lark-base-open/js-sdk";
+
 import { ref, onMounted, computed, watch, onUnmounted } from "vue";
 import { Message } from "@arco-design/web-vue";
 import SelectField from "./superView/SelectField.vue";
@@ -56,13 +78,32 @@ import {
   export_table_id,
   import_table_id,
   addBitRecord,
+  comment_table_id,
 } from "./js/superBase";
 import SelectTableView from "./superView/selectTable.vue";
 
 import axios from "axios";
 const buttonLoading = ref(false);
+const is_comment = ref(false);
 const bit_import_dic = ref({
   origin_filed: "",
+});
+const ytb_dic = ref({
+  video_slt: "视频缩略图",
+  video_title: "视频标题",
+  video_play_num: "播放量",
+  video_zan_num: "点赞数",
+  video_pl_num: "评论数",
+  video_like_num: "收藏数",
+  video_description: "视频介绍",
+  video_channelTitle: "频道名称",
+});
+onMounted(() => {
+  const dic = {
+    name: {
+      sex: "nan",
+    },
+  };
 });
 
 const select_import_arr = ref([]);
@@ -74,35 +115,18 @@ async function exportVoid() {
   buttonLoading.value = true;
   bit_loading.value = true;
   let target_filed_dic = {};
-  for (let key of select_import_arr.value) {
-    let name = "";
-    if (key == "video_slt") {
-      name = "视频缩略图";
-    }
-    if (key == "video_title") {
-      name = "视频标题";
-    }
-    if (key == "video_play_num") {
-      name = "播放量";
-    }
-    if (key == "video_zan_num") {
-      name = "点赞数";
-    }
-    if (key == "video_pl_num") {
-      name = "评论数";
-    }
-    if (key == "video_like_num") {
-      name = "收藏数";
-    }
-    if (key == "video_description") {
-      name = "视频介绍";
-    }
-    if (key == "video_channelTitle") {
-      name = "频道名称";
-    }
 
-    const fileId = await addBitNewField(name);
+  for (let key of select_import_arr.value) {
+    target_filed_dic[key] = ytb_dic[key];
+    const fileId = await addBitNewField(ytb_dic[key]);
     target_filed_dic[key] = fileId;
+  }
+  if (is_comment.value) {
+    const fileId = await addBitNewField(
+      "youtube_评论表",
+      FieldType.DuplexLink,
+      { tableId: comment_table_id.value }
+    );
   }
 
   const recordList = await bit_table.getRecordList();
@@ -180,9 +204,9 @@ function resultMapDic(data, target_filed_dic, record) {
       },
     };
   }
-  debugger
+  debugger;
   for (let key in dic.fields) {
-    if (key=='undefined') {
+    if (key == "undefined") {
       delete dic.fields[key];
     }
   }

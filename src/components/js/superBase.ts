@@ -9,6 +9,7 @@ const bit_select_dic = ref<any>({
 })
 const import_table_id = ref('')//导入人员时的表
 const export_table_id = ref('')//导出人员时的表
+const comment_table_id = ref('')//评论表
 
 bitable.base.onSelectionChange((event) => {
   // initBaeData();
@@ -26,8 +27,8 @@ async function initBaeData() {
   // bit_loading.value = true;
   bit_table = await bitable.base.getActiveTable();
   bit_select_dic.value.tableId = bit_table.id
-  export_table_id.value=bit_table.id
-  import_table_id.value=bit_table.id
+  export_table_id.value = bit_table.id
+  import_table_id.value = bit_table.id
   console.log('dd', bit_table)
   getAllField(true);
 }
@@ -39,11 +40,11 @@ async function getAllField(loadCache = false) {
   bit_loading.value = false;
 }
 initBaeData();
-export { initBaeData, getAllField, import_table_id, export_table_id }
+export { initBaeData, getAllField, import_table_id, export_table_id, comment_table_id }
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 // 新增字段
-async function addBitNewField(fileName, fieldType = FieldType.Text) {
+async function addBitNewField(fileName, fieldType = FieldType.Text,property={}) {
   if (export_table_id.value == import_table_id.value) {
     const czItem = bit_all_fieldList.value.find((a) => a["name"] == fileName);
     if (czItem) {
@@ -52,6 +53,7 @@ async function addBitNewField(fileName, fieldType = FieldType.Text) {
       const fileId = await bit_table.addField({
         type: fieldType,
         name: fileName,
+        property:property
       });
       return fileId;
     }
@@ -66,29 +68,17 @@ async function addBitNewField(fileName, fieldType = FieldType.Text) {
       const fileId = await result_table.addField({
         type: fieldType,
         name: fileName,
+        property:property
       });
       return fileId;
     }
   }
-
-
-
 }
 // 新增记录
 async function addBitRecord(arr) {
   const result_table = await bitable.base.getTableById(export_table_id.value)
 
   const res = await result_table.addRecords(arr);
-  //   {
-  //     fields: {
-  //       [field.id]: 'new text field value1'
-  //     }
-  //   },
-  //   {
-  //     fields: {
-  //       [field.id]: 'new text field value2'
-  //     }
-  //   },
 
 }
 
@@ -103,10 +93,11 @@ async function addBitNewTable(tableName) {
   const tableList = await bitable.base.getTableMetaList()
   const isExit = tableList.find((a) => a['name'] == tableName)
   if (isExit) {
-    export_table_id.value = isExit.id
+    return isExit.id
   } else {
-    const { tableId, index } = await bitable.base.addTable({ name: name, fields: [] })
-    export_table_id.value = tableId
+    const { tableId, index } = await bitable.base.addTable({ name: tableName, fields: [] })
+    await getAllTable()
+    return tableId
   }
 
 }

@@ -1,11 +1,11 @@
 
 <template>
   <main>
-    <imageToText class="p-all-5" />
+    <switchYtb class="p-all-5" />
   </main>
 </template>
 <script setup>
-import imageToText from "./components/imageToText.vue";
+import switchYtb from "./components/switchYtb.vue";
 </script>
 
 <style>

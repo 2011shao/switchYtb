@@ -2,7 +2,7 @@
 <template>
   <div class="grid-one p-all-1 grid-gap-5">
     <div class="row-start-center">
-      <a-typography-text class="flex-shrink labelCss">
+      <a-typography-text v-if="props.title" class="flex-shrink labelCss">
         {{ props.title }}
       </a-typography-text>
       <a-select
