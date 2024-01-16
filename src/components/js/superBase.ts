@@ -26,6 +26,8 @@ async function initBaeData() {
   // bit_loading.value = true;
   bit_table = await bitable.base.getActiveTable();
   bit_select_dic.value.tableId = bit_table.id
+  export_table_id.value=bit_table.id
+  import_table_id.value=bit_table.id
   console.log('dd', bit_table)
   getAllField(true);
 }
@@ -42,7 +44,6 @@ export { initBaeData, getAllField, import_table_id, export_table_id }
 
 // 新增字段
 async function addBitNewField(fileName, fieldType = FieldType.Text) {
-debugger
   if (export_table_id.value == import_table_id.value) {
     const czItem = bit_all_fieldList.value.find((a) => a["name"] == fileName);
     if (czItem) {

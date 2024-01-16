@@ -1,12 +1,12 @@
 
 <template>
   <div>
-    <a-typography-text
+    <!-- <a-typography-text
       >免费OCR识别,更多模型解析持续更新中
-      <!-- <a-typography-text type="primary" @click="helpVoid">
+      <a-typography-text type="primary" @click="helpVoid">
         查看教程
-      </a-typography-text> -->
-    </a-typography-text>
+      </a-typography-text>
+    </a-typography-text> -->
     <a-spin :loading="bit_loading" style="width: 100%" class="m-t-10">
       <div class="grid-one p-all-1 grid-gap-5">
         <a-divider>选择视频链接</a-divider>
@@ -119,7 +119,6 @@ async function exportVoid() {
     }
     const cell = await record.getCellByField(bit_import_dic.value.origin_filed);
     const value = cell.val;
-    debugger;
     if (!value) {
       continue;
     }
@@ -180,6 +179,12 @@ function resultMapDic(data, target_filed_dic, record) {
         [target_filed_dic.video_description]: snippet["description"],
       },
     };
+  }
+  debugger
+  for (let key in dic.fields) {
+    if (key=='undefined') {
+      delete dic.fields[key];
+    }
   }
   return dic;
 }
