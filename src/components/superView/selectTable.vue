@@ -92,7 +92,6 @@ function changeValue(e) {
 const getCanOption = computed(() => {
   const tableList = cloneDeep(bit_all_table.value);
   const allFieldArr = Object.values(props.allFieldDic);
-  debugger;
   for (let item of tableList) {
     item["disabled"] = false;
     if (allFieldArr.includes(item.id)) {

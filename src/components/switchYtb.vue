@@ -24,23 +24,25 @@
           v-model="export_table_id"
           :allFieldDic="{ comment_table_id, import_table_id }"
         ></SelectTableView>
-        <a-checkbox-group v-model="select_import_arr">
+        <a-checkbox-group v-model="select_video_info_arr">
           <a-space :size="20" wrap>
             <a-checkbox
-              v-for="(value, key) in ytb_dic"
+              v-for="(value, key) in ytb_video_info_dic"
               :key="key"
               :value="key"
               >{{ value }}</a-checkbox
             >
           </a-space>
         </a-checkbox-group>
+        <a-divider>获取评论</a-divider>
+
         <div class="row-start-center">
           <a-typography-text class="flex-shrink labelCss">
             获取评论
           </a-typography-text>
           <a-radio-group v-model="is_comment">
-            <a-radio value="true">需要</a-radio>
-            <a-radio value="false">不需要</a-radio>
+            <a-radio :value="true">需要</a-radio>
+            <a-radio :value="false">不需要</a-radio>
           </a-radio-group>
         </div>
         <SelectTableView
@@ -50,6 +52,16 @@
           v-model="comment_table_id"
           :allFieldDic="{ export_table_id, import_table_id }"
         ></SelectTableView>
+        <a-checkbox-group v-if="is_comment" v-model="select_video_comment_arr">
+          <a-space :size="20" wrap>
+            <a-checkbox
+              v-for="(value, key) in ytb_video_comment_dic"
+              :key="key"
+              :value="key"
+              >{{ value }}</a-checkbox
+            >
+          </a-space>
+        </a-checkbox-group>
 
         <a-button
           :loading="buttonLoading"
@@ -65,12 +77,9 @@
 </template>
 
 <script setup >
-import { bitable, FieldType, ITable } from "@lark-base-open/js-sdk";
-
 import { ref, onMounted, computed, watch, onUnmounted } from "vue";
 import { Message } from "@arco-design/web-vue";
 import SelectField from "./superView/SelectField.vue";
-import { getBankBin, getAliBankCheck } from "./bankjs/superBank";
 import {
   bit_loading,
   bit_table,
@@ -88,7 +97,7 @@ const is_comment = ref(false);
 const bit_import_dic = ref({
   origin_filed: "",
 });
-const ytb_dic = ref({
+const ytb_video_info_dic = ref({
   video_slt: "视频缩略图",
   video_title: "视频标题",
   video_play_num: "播放量",
@@ -98,6 +107,15 @@ const ytb_dic = ref({
   video_description: "视频介绍",
   video_channelTitle: "频道名称",
 });
+const select_video_info_arr = ref([]);
+const progress = ref(0);
+const select_video_comment_arr = ref([]);
+
+const ytb_video_comment_dic = ref({
+  date: "评论时间",
+  content: "评论内容",
+  sender: "评论人",
+});
 onMounted(() => {
   const dic = {
     name: {
@@ -106,26 +124,32 @@ onMounted(() => {
   };
 });
 
-const select_import_arr = ref([]);
-const progress = ref(0);
-
 // 导出word
+async function get_target_filed_id(selectArr, confDic,tableId) {
+  let dic = {};
+  for (let key of selectArr) {
+    dic[key] = confDic[key];
+    const fileId = await addBitNewField(confDic[key],tableId);
+    dic[key] = fileId;
+  }
+  return dic
+}
 async function exportVoid() {
   progress.value = 0;
   buttonLoading.value = true;
   bit_loading.value = true;
-  let target_filed_dic = {};
+  let target_filed_dic = await get_target_filed_id(
+    select_video_info_arr.value,
+    ytb_video_info_dic.value,
+    export_table_id.value
+  );
+  let target_comment_filed_dic = {};
 
-  for (let key of select_import_arr.value) {
-    target_filed_dic[key] = ytb_dic[key];
-    const fileId = await addBitNewField(ytb_dic[key]);
-    target_filed_dic[key] = fileId;
-  }
   if (is_comment.value) {
-    const fileId = await addBitNewField(
-      "youtube_评论表",
-      FieldType.DuplexLink,
-      { tableId: comment_table_id.value }
+    target_comment_filed_dic = await get_target_filed_id(
+      select_video_comment_arr.value,
+      ytb_video_comment_dic.value,
+      comment_table_id.value
     );
   }
 
@@ -133,10 +157,8 @@ async function exportVoid() {
   const view = await bit_table.getActiveView();
   const recordIdList = await view.getVisibleRecordIdList();
   let newDataArr = [];
+  let commentArr = [];
   let i = 0;
-  const attachmentField = await bit_table.getField(
-    bit_import_dic.value.origin_filed
-  );
   for (const record of recordList) {
     if (!recordIdList.includes(record.id)) {
       continue;
@@ -147,14 +169,22 @@ async function exportVoid() {
       continue;
     }
     if (Array.isArray(value) && value.length > 0) {
-      console.log("dddd", value["text"]);
       const resData = await axios.get(
-        `https://3132a811-1631-41a4-a032-fbd3bd2807f7-00-2bsd5brb3ja5.sisko.replit.dev/?video_url=${value[0]["text"]}`
+        `https://3132a811-1631-41a4-a032-fbd3bd2807f7-00-2bsd5brb3ja5.sisko.replit.dev/?video_url=${
+          value[0]["text"]
+        }&comment=${is_comment.value ? "true" : "false"}`
       );
       if (resData.data.code == 0) {
-        // 相同
+        // 视频信息
         const dic = resultMapDic(resData.data.data, target_filed_dic, record);
         newDataArr.push(dic);
+        // 视频评论
+        if (is_comment.value) {
+          commentArr = getCommentArr(
+            resData.data.comments,
+            target_comment_filed_dic
+          );
+        }
       }
 
       i++;
@@ -164,13 +194,39 @@ async function exportVoid() {
   if (export_table_id.value == import_table_id.value) {
     await bit_table.setRecords(newDataArr);
   } else {
-    await addBitRecord(newDataArr);
+    await addBitRecord(newDataArr, export_table_id.value);
+  }
+  if (is_comment.value && commentArr.length > 0) {
+    await addBitRecord(commentArr, comment_table_id.value);
   }
   Message.success("解析完成");
   buttonLoading.value = false;
   bit_loading.value = false;
 }
+// 视频评论
+function getCommentArr(commentsArr, target_filed_dic) {
+  const arr = [];
+  for (let item of commentsArr) {
+    let dic = {};
+    dic = {
+      fields: {
+        [target_filed_dic.date]: item["comment_time"],
+        [target_filed_dic.sender]: item["author_name"],
+        [target_filed_dic.content]: item["comment_text"],
+      },
+    };
+    for (let key in dic.fields) {
+      if (key == "undefined") {
+        delete dic.fields[key];
+      }
+    }
+    arr.push(dic);
+  }
 
+  return arr;
+}
+
+// 视频信息
 function resultMapDic(data, target_filed_dic, record) {
   const snippet = data["items"][0]["snippet"];
   const statistics = data["items"][0]["statistics"];
@@ -204,7 +260,6 @@ function resultMapDic(data, target_filed_dic, record) {
       },
     };
   }
-  debugger;
   for (let key in dic.fields) {
     if (key == "undefined") {
       delete dic.fields[key];
@@ -214,11 +269,22 @@ function resultMapDic(data, target_filed_dic, record) {
 }
 
 const commitCan = computed(() => {
-  if (bit_import_dic.value.origin_filed) {
-    if (select_import_arr.value.length > 0) {
+ 
+  if (is_comment.value) {
+    if (
+      comment_table_id.value &&
+      select_video_comment_arr.value.length > 0 &&
+      select_video_info_arr.value.length > 0 &&
+      export_table_id.value
+    ) {
+      return true;
+    }
+  } else {
+    if (select_video_info_arr.value.length > 0 && export_table_id.value) {
       return true;
     }
   }
+
   return false;
 });
 function helpVoid(params) {
