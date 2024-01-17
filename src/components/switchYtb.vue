@@ -1,25 +1,25 @@
 
 <template>
   <div>
-    <!-- <a-typography-text
-      >免费OCR识别,更多模型解析持续更新中
+    <a-typography-text
+      >YouToBe小助手
       <a-typography-text type="primary" @click="helpVoid">
         查看教程
       </a-typography-text>
-    </a-typography-text> -->
+    </a-typography-text>
     <a-spin :loading="bit_loading" style="width: 100%" class="m-t-10">
       <div class="grid-one p-all-1 grid-gap-5">
         <a-divider>视频地址</a-divider>
         <SelectField
-          title="链接地址"
+          title="视频地址"
           v-model="bit_import_dic.origin_filed"
           :typeNumArr="[1, 15]"
-          :preSetArr="['链接地址', '地址']"
+          :preSetArr="['视频地址', '地址', '链接']"
           :allFieldDic="bit_import_dic"
         ></SelectField>
-        <a-divider>存放位置</a-divider>
+        <a-divider>视频信息</a-divider>
         <SelectTableView
-          title="选择表"
+          title="视频信息表"
           canAdd
           v-model="export_table_id"
           :allFieldDic="{ comment_table_id, import_table_id }"
@@ -34,11 +34,11 @@
             >
           </a-space>
         </a-checkbox-group>
-        <a-divider>获取评论</a-divider>
+        <a-divider>视频评论</a-divider>
 
         <div class="row-start-center">
           <a-typography-text class="flex-shrink labelCss">
-            获取评论
+            视频评论
           </a-typography-text>
           <a-radio-group v-model="is_comment">
             <a-radio :value="true">需要</a-radio>
@@ -92,6 +92,7 @@ import {
 import SelectTableView from "./superView/selectTable.vue";
 
 import axios from "axios";
+import dayjs from "dayjs";
 const buttonLoading = ref(false);
 const is_comment = ref(false);
 const bit_import_dic = ref({
@@ -106,6 +107,7 @@ const ytb_video_info_dic = ref({
   video_like_num: "收藏数",
   video_description: "视频介绍",
   video_channelTitle: "频道名称",
+  video_push_time: "发布时间",
 });
 const select_video_info_arr = ref([]);
 const progress = ref(0);
@@ -117,22 +119,19 @@ const ytb_video_comment_dic = ref({
   sender: "评论人",
 });
 onMounted(() => {
-  const dic = {
-    name: {
-      sex: "nan",
-    },
-  };
+  select_video_info_arr.value = Object.keys(ytb_video_info_dic.value);
+  select_video_comment_arr.value = Object.keys(ytb_video_comment_dic.value);
 });
 
 // 导出word
-async function get_target_filed_id(selectArr, confDic,tableId) {
+async function get_target_filed_id(selectArr, confDic, tableId) {
   let dic = {};
   for (let key of selectArr) {
     dic[key] = confDic[key];
-    const fileId = await addBitNewField(confDic[key],tableId);
+    const fileId = await addBitNewField(confDic[key], tableId);
     dic[key] = fileId;
   }
-  return dic
+  return dic;
 }
 async function exportVoid() {
   progress.value = 0;
@@ -166,14 +165,22 @@ async function exportVoid() {
     const cell = await record.getCellByField(bit_import_dic.value.origin_filed);
     const value = cell.val;
     if (!value) {
+      i++;
+      progress.value = parseInt(i / recordIdList.length);
       continue;
     }
     if (Array.isArray(value) && value.length > 0) {
-      const resData = await axios.get(
-        `https://3132a811-1631-41a4-a032-fbd3bd2807f7-00-2bsd5brb3ja5.sisko.replit.dev/?video_url=${
-          value[0]["text"]
-        }&comment=${is_comment.value ? "true" : "false"}`
-      );
+      const resData = await axios
+        .get(
+          `https://3132a811-1631-41a4-a032-fbd3bd2807f7-00-2bsd5brb3ja5.sisko.replit.dev/?video_url=${
+            value[0]["text"]
+          }&comment=${is_comment.value ? "true" : "false"}`
+        )
+        .catch((err) => {
+          i++;
+          progress.value = parseInt(i / recordIdList.length);
+        });
+      if (!resData) continue;
       if (resData.data.code == 0) {
         // 视频信息
         const dic = resultMapDic(resData.data.data, target_filed_dic, record);
@@ -186,10 +193,9 @@ async function exportVoid() {
           );
         }
       }
-
-      i++;
-      progress.value = parseInt(i / recordIdList.length);
     }
+    i++;
+    progress.value = parseInt(i / recordIdList.length);
   }
   if (export_table_id.value == import_table_id.value) {
     await bit_table.setRecords(newDataArr);
@@ -244,6 +250,9 @@ function resultMapDic(data, target_filed_dic, record) {
         [target_filed_dic.video_play_num]: statistics["viewCount"],
         [target_filed_dic.video_channelTitle]: snippet["channelTitle"],
         [target_filed_dic.video_description]: snippet["description"],
+        [target_filed_dic.video_push_time]: dayjs(
+          snippet["publishedAt"]
+        ).format("YYYY-MM-DD HH:mm:ss"),
       },
     };
   } else {
@@ -257,6 +266,9 @@ function resultMapDic(data, target_filed_dic, record) {
         [target_filed_dic.video_play_num]: statistics["viewCount"],
         [target_filed_dic.video_channelTitle]: snippet["channelTitle"],
         [target_filed_dic.video_description]: snippet["description"],
+        [target_filed_dic.video_push_time]: dayjs(
+          snippet["publishedAt"]
+        ).format("YYYY-MM-DD HH:mm:ss"),
       },
     };
   }
@@ -269,7 +281,6 @@ function resultMapDic(data, target_filed_dic, record) {
 }
 
 const commitCan = computed(() => {
- 
   if (is_comment.value) {
     if (
       comment_table_id.value &&
@@ -289,7 +300,7 @@ const commitCan = computed(() => {
 });
 function helpVoid(params) {
   window.open(
-    "https://y35xdslz6g.feishu.cn/docx/QB5udpPFgotthpxKRaJcSaTmnOM?from=from_copylink",
+    "https://y35xdslz6g.feishu.cn/docx/EhI1dCS2boR6nQxmu8fcXiBbnZf?from=from_copylink",
     "_blank"
   );
 }
