@@ -172,7 +172,7 @@ async function exportVoid() {
     if (Array.isArray(value) && value.length > 0) {
       const resData = await axios
         .get(
-          `https://3132a811-1631-41a4-a032-fbd3bd2807f7-00-2bsd5brb3ja5.sisko.replit.dev/?video_url=${
+          `https://fsgoole.replit.app/?video_url=${
             value[0]["text"]
           }&comment=${is_comment.value ? "true" : "false"}`
         )
