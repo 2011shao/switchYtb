@@ -137,19 +137,26 @@ async function exportVoid() {
   progress.value = 0;
   buttonLoading.value = true;
   bit_loading.value = true;
+
   let target_filed_dic = await get_target_filed_id(
     select_video_info_arr.value,
     ytb_video_info_dic.value,
     export_table_id.value
   );
-  let target_comment_filed_dic = {};
+  if (export_table_id.value != import_table_id.value) {
+    const fileId = await addBitNewField("视频地址", export_table_id.value);
+    target_filed_dic["video_url"] = fileId;
+  }
 
+  let target_comment_filed_dic = {};
   if (is_comment.value) {
+    const fileId = await addBitNewField("视频地址", comment_table_id.value);
     target_comment_filed_dic = await get_target_filed_id(
       select_video_comment_arr.value,
       ytb_video_comment_dic.value,
       comment_table_id.value
     );
+    target_comment_filed_dic["video_url"] = fileId;
   }
 
   const recordList = await bit_table.getRecordList();
@@ -172,9 +179,9 @@ async function exportVoid() {
     if (Array.isArray(value) && value.length > 0) {
       const resData = await axios
         .get(
-          `https://fsgoole.replit.app/?video_url=${
-            value[0]["text"]
-          }&comment=${is_comment.value ? "true" : "false"}`
+          `https://fsgoole.replit.app/?video_url=${value[0]["text"]}&comment=${
+            is_comment.value ? "true" : "false"
+          }`
         )
         .catch((err) => {
           i++;
@@ -183,13 +190,14 @@ async function exportVoid() {
       if (!resData) continue;
       if (resData.data.code == 0) {
         // 视频信息
-        const dic = resultMapDic(resData.data.data, target_filed_dic, record);
+        const dic = resultMapDic(resData.data.data, target_filed_dic, record,value[0]["text"]);
         newDataArr.push(dic);
         // 视频评论
         if (is_comment.value) {
           commentArr = getCommentArr(
             resData.data.comments,
-            target_comment_filed_dic
+            target_comment_filed_dic,
+            value[0]["text"]
           );
         }
       }
@@ -202,6 +210,7 @@ async function exportVoid() {
   } else {
     await addBitRecord(newDataArr, export_table_id.value);
   }
+  debugger
   if (is_comment.value && commentArr.length > 0) {
     await addBitRecord(commentArr, comment_table_id.value);
   }
@@ -210,7 +219,7 @@ async function exportVoid() {
   bit_loading.value = false;
 }
 // 视频评论
-function getCommentArr(commentsArr, target_filed_dic) {
+function getCommentArr(commentsArr, target_filed_dic, video_url) {
   const arr = [];
   for (let item of commentsArr) {
     let dic = {};
@@ -219,6 +228,7 @@ function getCommentArr(commentsArr, target_filed_dic) {
         [target_filed_dic.date]: item["comment_time"],
         [target_filed_dic.sender]: item["author_name"],
         [target_filed_dic.content]: item["comment_text"],
+        [target_filed_dic.video_url]: video_url,
       },
     };
     for (let key in dic.fields) {
@@ -233,7 +243,7 @@ function getCommentArr(commentsArr, target_filed_dic) {
 }
 
 // 视频信息
-function resultMapDic(data, target_filed_dic, record) {
+function resultMapDic(data, target_filed_dic, record, video_url) {
   const snippet = data["items"][0]["snippet"];
   const statistics = data["items"][0]["statistics"];
   let dic = {};
@@ -258,6 +268,7 @@ function resultMapDic(data, target_filed_dic, record) {
   } else {
     dic = {
       fields: {
+        [target_filed_dic.video_url]: video_url,
         [target_filed_dic.video_slt]: snippet["thumbnails"]["high"]["url"],
         [target_filed_dic.video_title]: snippet["title"],
         [target_filed_dic.video_pl_num]: statistics["commentCount"],
