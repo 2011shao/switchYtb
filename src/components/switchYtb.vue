@@ -210,7 +210,6 @@ async function exportVoid() {
   } else {
     await addBitRecord(newDataArr, export_table_id.value);
   }
-  debugger
   if (is_comment.value && commentArr.length > 0) {
     await addBitRecord(commentArr, comment_table_id.value);
   }
