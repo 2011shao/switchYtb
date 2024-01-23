@@ -159,21 +159,21 @@ async function exportVoid() {
     target_comment_filed_dic["video_url"] = fileId;
   }
 
-  const recordList = await bit_table.getRecordList();
+  // const recordList = await bit_table.getRecordList();
   const view = await bit_table.getActiveView();
   const recordIdList = await view.getVisibleRecordIdList();
   let newDataArr = [];
-  let commentArr = [];
   let i = 0;
-  for (const record of recordList) {
-    if (!recordIdList.includes(record.id)) {
-      continue;
-    }
-    const cell = await record.getCellByField(bit_import_dic.value.origin_filed);
-    const value = cell.val;
+  for (const recordId of recordIdList) {
+    const value = await bit_table.getCellValue(
+      bit_import_dic.value.origin_filed,
+      recordId
+    );
+    // const cell = await record.getCellByField(bit_import_dic.value.origin_filed);
+    // const value = cell.val;
     if (!value) {
       i++;
-      progress.value = parseInt(i / recordIdList.length);
+      progress.value = (i / recordIdList.length).toFixed(2);
       continue;
     }
     if (Array.isArray(value) && value.length > 0) {
@@ -185,34 +185,41 @@ async function exportVoid() {
         )
         .catch((err) => {
           i++;
-          progress.value = parseInt(i / recordIdList.length);
+          progress.value = (i / recordIdList.length).toFixed(2);
         });
       if (!resData) continue;
       if (resData.data.code == 0) {
         // 视频信息
-        const dic = resultMapDic(resData.data.data, target_filed_dic, record,value[0]["text"]);
+        const dic = resultMapDic(
+          resData.data.data,
+          target_filed_dic,
+          recordId,
+          value[0]["text"]
+        );
         newDataArr.push(dic);
         // 视频评论
         if (is_comment.value) {
-          commentArr = getCommentArr(
+          const arr = getCommentArr(
             resData.data.comments,
             target_comment_filed_dic,
             value[0]["text"]
           );
+          if (is_comment.value && arr.length > 0) {
+            await addBitRecord(arr, comment_table_id.value);
+          }
         }
       }
     }
     i++;
-    progress.value = parseInt(i / recordIdList.length);
+    progress.value = (i / recordIdList.length).toFixed(2);
   }
   if (export_table_id.value == import_table_id.value) {
     await bit_table.setRecords(newDataArr);
   } else {
     await addBitRecord(newDataArr, export_table_id.value);
   }
-  if (is_comment.value && commentArr.length > 0) {
-    await addBitRecord(commentArr, comment_table_id.value);
-  }
+  newDataArr = [];
+
   Message.success("解析完成");
   buttonLoading.value = false;
   bit_loading.value = false;
@@ -224,7 +231,9 @@ function getCommentArr(commentsArr, target_filed_dic, video_url) {
     let dic = {};
     dic = {
       fields: {
-        [target_filed_dic.date]: item["comment_time"],
+        [target_filed_dic.date]: dayjs(item["comment_time"]).format(
+          "YYYY-MM-DD HH:mm:ss"
+        ),
         [target_filed_dic.sender]: item["author_name"],
         [target_filed_dic.content]: item["comment_text"],
         [target_filed_dic.video_url]: video_url,
@@ -242,14 +251,14 @@ function getCommentArr(commentsArr, target_filed_dic, video_url) {
 }
 
 // 视频信息
-function resultMapDic(data, target_filed_dic, record, video_url) {
+function resultMapDic(data, target_filed_dic, recordId, video_url) {
   const snippet = data["items"][0]["snippet"];
   const statistics = data["items"][0]["statistics"];
   let dic = {};
   // 相同
   if (export_table_id.value == import_table_id.value) {
     dic = {
-      recordId: record.id,
+      recordId: recordId,
       fields: {
         [target_filed_dic.video_slt]: snippet["thumbnails"]["high"]["url"],
         [target_filed_dic.video_title]: snippet["title"],
@@ -301,7 +310,11 @@ const commitCan = computed(() => {
       return true;
     }
   } else {
-    if (select_video_info_arr.value.length > 0 && export_table_id.value) {
+    if (
+      select_video_info_arr.value.length > 0 &&
+      export_table_id.value &&
+      bit_import_dic.value.origin_filed
+    ) {
       return true;
     }
   }
