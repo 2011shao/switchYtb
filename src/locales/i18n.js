@@ -2,11 +2,8 @@ import { createI18n } from 'vue-i18n'
 import en from './en.json';
 import zh from './zh.json';
 import { bitable } from '@lark-base-open/js-sdk'
-
-
-
-export const i18n = createI18n({
-  locale: 'en',
+const i18n = createI18n({
+  locale: 'zh',
   allowComposition: true, // 占位符支持
   messages: {
     en: en,
@@ -14,7 +11,7 @@ export const i18n = createI18n({
   }
 })
 
+export {i18n}
 bitable.bridge.getLanguage().then((lang) => {
-  i18n.global.locale = lang
+    i18n.global.locale = lang
 })
-
