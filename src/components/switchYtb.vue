@@ -33,7 +33,7 @@
             <a-checkbox v-for="(value, key) in ytb_video_comment_dic" :key="key" :value="key">{{ value }}</a-checkbox>
           </a-space>
         </a-checkbox-group>
-        <a-button :loading="buttonLoading" :disabled="commitCan" type="primary" @click="exportVoid">{{$t('start_parse') }}</a-button>
+        <a-button :loading="buttonLoading" :disabled="!commitCan" type="primary" @click="exportVoid">{{$t('start_parse') }}</a-button>
         <a-progress v-if="buttonLoading" :percent="progress" />
       </div>
     </a-spin>
@@ -287,6 +287,7 @@
         return true;
       }
     } else {
+      debugger
       if (
         select_video_info_arr.value.length > 0 &&
         export_table_id.value &&
