@@ -171,6 +171,7 @@ async function exportVoid() {
       bit_import_dic.value.origin_filed,
       recordId
     );
+    debugger;
     // const cell = await record.getCellByField(bit_import_dic.value.origin_filed);
     // const value = cell.val;
     if (!value) {
@@ -178,10 +179,21 @@ async function exportVoid() {
       progress.value = (i / recordIdList.length).toFixed(2);
       continue;
     }
+
     if (Array.isArray(value) && value.length > 0) {
+      let videoLink = "";
+      if (value[0]["type"] == "text") {
+        videoLink = value[0]["text"];
+      }
+      if (value[0]["type"] == "url") {
+        videoLink = value[0]["link"];
+      }
+      if (!videoLink) {
+        continue;
+      }
       const resData = await axios
         .get(
-          `https://fsgoole.replit.app/?video_url=${value[0]["text"]}&comment=${
+          `https://fsgoole.replit.app/?video_url=${videoLink}&comment=${
             is_comment.value ? "true" : "false"
           }`
         )
